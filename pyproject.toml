@@ -1,0 +1,14 @@
+[project]
+name = "wechat-finder-dlna"
+version = "0.1.0"
+description = "Capture WeChat Video Channel (视频号) live streams via fake DLNA screen casting"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+dependencies = []
+
+[project.scripts]
+wechat-finder-dlna = "wechat_finder_dlna.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
