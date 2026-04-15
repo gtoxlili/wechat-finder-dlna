@@ -2,6 +2,10 @@
 
 [中文文档](README_CN.md)
 
+[![PyPI](https://img.shields.io/pypi/v/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
+[![Python](https://img.shields.io/pypi/pyversions/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
+[![License](https://img.shields.io/github/license/gtoxlili/wechat-finder-dlna)](LICENSE)
+
 Grab WeChat Video Channel (视频号) live stream URLs by faking a TV on your LAN.
 
 No proxy, no certificate, no MITM — just plain DLNA, the same protocol your smart TV speaks.
