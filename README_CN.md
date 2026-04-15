@@ -1,5 +1,9 @@
 # wechat-finder-dlna
 
+[![PyPI](https://img.shields.io/pypi/v/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
+[![Python](https://img.shields.io/pypi/pyversions/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
+[![License](https://img.shields.io/github/license/gtoxlili/wechat-finder-dlna)](LICENSE)
+
 把你的电脑伪装成一台电视，通过 DLNA 投屏捕获微信视频号的直播流地址。
 
 不用抓包，不用装证书，不用挂代理，不用碰微信客户端 —— 用的就是你家电视投屏那套标准协议。
