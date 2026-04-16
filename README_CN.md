@@ -147,8 +147,13 @@ url = capture(name="我的录制器", protocols=["dlna", "airplay"])
 
 试试去掉 ffmpeg 的 `-re` 参数（直接用 `ffmpeg -i <url> -c copy output.mp4`），或者换用 `-c:v libx264 -c:a aac` 重新编码。
 
+## Rust 版本
+
+如果你需要单文件部署、不想装 Python 环境，可以看 [wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs) —— 功能一致，Rust 异步实现，编译成单个二进制文件。
+
 ## 相关项目
 
+- [wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs) — Rust 重写版，单文件，异步运行时
 - [macast](https://github.com/xfangfang/Macast) — 带 GUI 的完整 DLNA 渲染器，用 mpv 播放，功能更全但也更重
 - [dlnap](https://github.com/ttymck/dlnap) — 反过来的：从命令行控制局域网里的 DLNA 电视
 

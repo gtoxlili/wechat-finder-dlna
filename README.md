@@ -114,8 +114,13 @@ Yes — any app that supports DLNA/AirPlay/Chromecast casting works. Bilibili, i
 **Can WeChat detect or block this?**
 No. The protocol is standard UPnP/DLNA. From WeChat's perspective this is just another TV on the network.
 
+## Rust version
+
+Looking for a single-binary, no-runtime-dependency version? Check out [wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs) — same protocols, async Rust, compiles to one static binary.
+
 ## See also
 
+- [wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs) — Rust rewrite, single binary, async runtime
 - [dlnap](https://github.com/ttymck/dlnap) — control DLNA renderers from the command line (the other direction: you push *to* a TV)
 - [macast](https://github.com/xfangfang/Macast) — full-featured DLNA renderer with GUI, uses mpv for playback
 
