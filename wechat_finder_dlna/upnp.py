@@ -23,20 +23,20 @@ log = logging.getLogger(__name__)
 # ── UPnP LastChange event XML ─────────────────────────────────────
 
 _LAST_CHANGE_STOPPED = (
-    '&lt;Event xmlns=&quot;urn:schemas-upnp-org:metadata-1-0/AVT/&quot;&gt;'
-    '&lt;InstanceID val=&quot;0&quot;&gt;'
-    '&lt;TransportState val=&quot;STOPPED&quot;/&gt;'
-    '&lt;/InstanceID&gt;'
-    '&lt;/Event&gt;'
+    "&lt;Event xmlns=&quot;urn:schemas-upnp-org:metadata-1-0/AVT/&quot;&gt;"
+    "&lt;InstanceID val=&quot;0&quot;&gt;"
+    "&lt;TransportState val=&quot;STOPPED&quot;/&gt;"
+    "&lt;/InstanceID&gt;"
+    "&lt;/Event&gt;"
 )
 
 _NOTIFY_BODY = (
     '<?xml version="1.0" encoding="utf-8"?>\n'
     '<e:propertyset xmlns:e="urn:schemas-upnp-org:event-1-0">\n'
-    '  <e:property>\n'
-    '    <LastChange>{last_change}</LastChange>\n'
-    '  </e:property>\n'
-    '</e:propertyset>'
+    "  <e:property>\n"
+    "    <LastChange>{last_change}</LastChange>\n"
+    "  </e:property>\n"
+    "</e:propertyset>"
 )
 
 
@@ -82,7 +82,8 @@ class UPnPHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         routes = {
             "/device.xml": descriptors.DEVICE.format(
-                friendly_name=self.friendly_name, uuid=self.device_uuid,
+                friendly_name=self.friendly_name,
+                uuid=self.device_uuid,
             ),
             "/AVTransport/scpd.xml": descriptors.AVTRANSPORT_SCPD,
             "/RenderingControl/scpd.xml": descriptors.RENDERING_SCPD,
@@ -97,40 +98,56 @@ class UPnPHandler(BaseHTTPRequestHandler):
     # ── POST: handle SOAP actions ───────────────────────────────────
 
     def do_POST(self):
-        body = self.rfile.read(
-            int(self.headers.get("Content-Length", 0))
-        ).decode("utf-8", errors="replace")
+        body = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode(
+            "utf-8", errors="replace"
+        )
         action = self.headers.get("SOAPAction", "")
 
         if "SetAVTransportURI" in action:
             self._on_set_uri(body)
         elif "GetTransportInfo" in action:
             state = "STOPPED" if self._captured else "PLAYING"
-            self._xml(200, descriptors.soap_response(
-                "GetTransportInfo", "AVTransport",
-                f"<CurrentTransportState>{state}</CurrentTransportState>"
-                "<CurrentTransportStatus>OK</CurrentTransportStatus>"
-                "<CurrentSpeed>1</CurrentSpeed>",
-            ))
+            self._xml(
+                200,
+                descriptors.soap_response(
+                    "GetTransportInfo",
+                    "AVTransport",
+                    f"<CurrentTransportState>{state}</CurrentTransportState>"
+                    "<CurrentTransportStatus>OK</CurrentTransportStatus>"
+                    "<CurrentSpeed>1</CurrentSpeed>",
+                ),
+            )
         elif "GetPositionInfo" in action:
-            self._xml(200, descriptors.soap_response(
-                "GetPositionInfo", "AVTransport",
-                "<Track>1</Track><TrackDuration>00:00:00</TrackDuration>"
-                "<TrackMetaData/><TrackURI/>"
-                "<RelTime>00:00:00</RelTime><AbsTime>00:00:00</AbsTime>"
-                "<RelCount>0</RelCount><AbsCount>0</AbsCount>",
-            ))
+            self._xml(
+                200,
+                descriptors.soap_response(
+                    "GetPositionInfo",
+                    "AVTransport",
+                    "<Track>1</Track><TrackDuration>00:00:00</TrackDuration>"
+                    "<TrackMetaData/><TrackURI/>"
+                    "<RelTime>00:00:00</RelTime><AbsTime>00:00:00</AbsTime>"
+                    "<RelCount>0</RelCount><AbsCount>0</AbsCount>",
+                ),
+            )
         elif "GetVolume" in action:
-            self._xml(200, descriptors.soap_response(
-                "GetVolume", "RenderingControl",
-                "<CurrentVolume>50</CurrentVolume>",
-            ))
+            self._xml(
+                200,
+                descriptors.soap_response(
+                    "GetVolume",
+                    "RenderingControl",
+                    "<CurrentVolume>50</CurrentVolume>",
+                ),
+            )
         elif "GetProtocolInfo" in action:
-            self._xml(200, descriptors.soap_response(
-                "GetProtocolInfo", "ConnectionManager",
-                "<Source/><Sink>http-get:*:video/mp4:*,"
-                "http-get:*:application/vnd.apple.mpegurl:*</Sink>",
-            ))
+            self._xml(
+                200,
+                descriptors.soap_response(
+                    "GetProtocolInfo",
+                    "ConnectionManager",
+                    "<Source/><Sink>http-get:*:video/mp4:*,"
+                    "http-get:*:application/vnd.apple.mpegurl:*</Sink>",
+                ),
+            )
         else:
             # Play / Stop / Pause / anything else → 200 OK.
             name = next(
@@ -138,8 +155,10 @@ class UPnPHandler(BaseHTTPRequestHandler):
                 "Unknown",
             )
             svc = (
-                "AVTransport" if "AVTransport" in self.path
-                else "RenderingControl" if "Rendering" in self.path
+                "AVTransport"
+                if "AVTransport" in self.path
+                else "RenderingControl"
+                if "Rendering" in self.path
                 else "ConnectionManager"
             )
             self._xml(200, descriptors.soap_response(name, svc))
@@ -176,8 +195,16 @@ class UPnPHandler(BaseHTTPRequestHandler):
             url = html.unescape(m.group(1).strip())
             UPnPHandler._captured = True
             self.on_url(url)
-            # Push STOPPED event to all AVTransport subscribers.
-            self._notify_stopped()
+
+            # Delay the STOPPED event so the sender stays connected
+            # long enough for the user to see it succeeded.
+            def _delayed_stop():
+                import time
+
+                time.sleep(3)
+                self._notify_stopped()
+
+            threading.Thread(target=_delayed_stop, daemon=True).start()
         self._xml(200, descriptors.soap_response("SetAVTransportURI", "AVTransport"))
 
     @staticmethod
@@ -187,7 +214,9 @@ class UPnPHandler(BaseHTTPRequestHandler):
             subs = dict(UPnPHandler._subscribers)
         for sid, url in subs.items():
             threading.Thread(
-                target=_send_notify, args=(url, sid), daemon=True,
+                target=_send_notify,
+                args=(url, sid),
+                daemon=True,
             ).start()
 
     def _xml(self, code: int, body: bytes) -> None:
