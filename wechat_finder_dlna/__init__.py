@@ -21,11 +21,14 @@ Example::
 
 from __future__ import annotations
 
+import logging
 import sys
 import threading
 import uuid
 from http.server import HTTPServer
 from typing import Callable
+
+log = logging.getLogger(__name__)
 
 from .net import get_lan_ip
 from .ssdp import SSDPAdvertiser
@@ -77,42 +80,59 @@ def capture(
         event.set()
 
     cleanups: list[Callable[[], None]] = []
+    started: list[str] = []
 
     # ── DLNA ───────────────────────────────────────────────────────
     if "dlna" in protocols:
-        location = f"http://{local_ip}:{port}/device.xml"
-        UPnPHandler.device_uuid = dev_uuid
-        UPnPHandler.friendly_name = name
-        UPnPHandler.on_url = staticmethod(_handle)
+        try:
+            location = f"http://{local_ip}:{port}/device.xml"
+            UPnPHandler.device_uuid = dev_uuid
+            UPnPHandler.friendly_name = name
+            UPnPHandler.on_url = staticmethod(_handle)
 
-        server = HTTPServer(("", port), UPnPHandler)
-        ssdp = SSDPAdvertiser(dev_uuid, location, local_ip)
-        ssdp.start()
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        cleanups.extend([server.shutdown, ssdp.stop])
-        print(f"  📺 DLNA   \"{name}\" on {local_ip}:{port}", file=sys.stderr)
+            server = HTTPServer(("", port), UPnPHandler)
+            ssdp = SSDPAdvertiser(dev_uuid, location, local_ip)
+            ssdp.start()
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            cleanups.extend([server.shutdown, ssdp.stop])
+            started.append("dlna")
+            print(f"  📺 DLNA    \"{name}\" on {local_ip}:{port}", file=sys.stderr)
+        except Exception:
+            log.warning("Failed to start DLNA", exc_info=True)
+            print(f"  ⚠️  DLNA   failed to start (see --verbose)", file=sys.stderr)
 
     # ── AirPlay ────────────────────────────────────────────────────
-    airplay_recv = None
     if "airplay" in protocols:
-        from .airplay import AirPlayReceiver
-        airplay_port = port + 1 if "dlna" in protocols else port
-        airplay_recv = AirPlayReceiver(name, local_ip, airplay_port, _handle)
-        airplay_recv.start()
-        cleanups.append(airplay_recv.stop)
-        print(f"  🍎 AirPlay \"{name}\" on {local_ip}:{airplay_port}", file=sys.stderr)
+        try:
+            from .airplay import AirPlayReceiver
+            airplay_port = port + 1 if "dlna" in protocols else port
+            airplay_recv = AirPlayReceiver(name, local_ip, airplay_port, _handle)
+            airplay_recv.start()
+            cleanups.append(airplay_recv.stop)
+            started.append("airplay")
+            print(f"  🍎 AirPlay \"{name}\" on {local_ip}:{airplay_port}", file=sys.stderr)
+        except Exception:
+            log.warning("Failed to start AirPlay", exc_info=True)
+            print(f"  ⚠️  AirPlay failed to start (see --verbose)", file=sys.stderr)
 
     # ── Google Cast ────────────────────────────────────────────────
-    cast_recv = None
     if "cast" in protocols:
-        from .cast import CastReceiver
-        cast_port = 8009
-        cast_recv = CastReceiver(name, local_ip, cast_port, _handle)
-        cast_recv.start()
-        cleanups.append(cast_recv.stop)
-        print(f"  📡 Cast   \"{name}\" on {local_ip}:{cast_port}", file=sys.stderr)
+        try:
+            from .cast import CastReceiver
+            cast_port = 8009
+            cast_recv = CastReceiver(name, local_ip, cast_port, _handle)
+            cast_recv.start()
+            cleanups.append(cast_recv.stop)
+            started.append("cast")
+            print(f"  📡 Cast    \"{name}\" on {local_ip}:{cast_port}", file=sys.stderr)
+        except Exception:
+            log.warning("Failed to start Cast", exc_info=True)
+            print(f"  ⚠️  Cast   failed to start (see --verbose)", file=sys.stderr)
 
-    enabled = ", ".join(p.upper() for p in protocols)
+    if not started:
+        raise RuntimeError("All protocols failed to start")
+
+    enabled = ", ".join(p.upper() for p in started)
     print(f"\n  Protocols: {enabled}", file=sys.stderr)
     print(f"  Open your app > cast > select \"{name}\"\n", file=sys.stderr)
 

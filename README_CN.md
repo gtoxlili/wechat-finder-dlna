@@ -50,7 +50,7 @@ uv tool install wechat-finder-dlna
 pip install wechat-finder-dlna
 ```
 
-Python 3.10+，仅依赖 [zeroconf](https://pypi.org/project/zeroconf/)（用于 AirPlay/Cast 的 mDNS 广播）。
+Python 3.10+，依赖会自动安装。
 
 ## 用法
 
@@ -128,7 +128,6 @@ url = capture(name="我的录制器", protocols=["dlna", "airplay"])
 - Python 3.10+
 - 手机和电脑在**同一个局域网**（同一个 WiFi）
 - 录制功能需要 `ffmpeg`
-- Cast 协议需要 `openssl` CLI（macOS/Linux 自带）
 
 ## 常见问题
 

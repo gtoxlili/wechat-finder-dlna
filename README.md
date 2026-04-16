@@ -46,7 +46,7 @@ uv tool install wechat-finder-dlna
 pip install wechat-finder-dlna
 ```
 
-Python 3.10+, single dependency ([zeroconf](https://pypi.org/project/zeroconf/) for AirPlay/Cast mDNS).
+Python 3.10+, dependencies are installed automatically.
 
 ## Quick start
 
@@ -87,8 +87,6 @@ url = capture(name="My TV", protocols=["dlna", "airplay"])
 - Python 3.10+
 - Phone and computer on the **same WiFi / LAN**
 - `ffmpeg` only if you use `--record`
-- `openssl` CLI (for Cast protocol TLS cert generation; pre-installed on macOS/Linux)
-
 ## How it works
 
 ### DLNA/UPnP
