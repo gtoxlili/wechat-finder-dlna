@@ -5,7 +5,12 @@ description = "Capture WeChat Video Channel (视频号) live streams via fake sc
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
-dependencies = ["zeroconf>=0.131.0", "protobuf>=4.25.0"]
+dependencies = [
+    "zeroconf>=0.131.0",
+    "protobuf>=4.25.0",
+    "cryptography>=41.0.0",
+    "pycryptodome>=3.23.0",
+]
 authors = [{ name = "gtoxlili" }]
 keywords = [
     "wechat", "weixin", "dlna", "upnp", "airplay", "chromecast",

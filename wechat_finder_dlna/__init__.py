@@ -30,9 +30,9 @@ from typing import Callable
 
 log = logging.getLogger(__name__)
 
-from .net import get_lan_ip
-from .ssdp import SSDPAdvertiser
-from .upnp import UPnPHandler
+from .net import get_lan_ip  # noqa: E402
+from .ssdp import SSDPAdvertiser  # noqa: E402
+from .upnp import UPnPHandler  # noqa: E402
 
 __all__ = ["capture"]
 
@@ -41,10 +41,12 @@ PROTOCOLS = ("dlna", "airplay", "cast")
 
 def capture(
     *,
-    name: str = "wechat-finder-dlna",
+    name: str = "MAGI",
     port: int = 9090,
     on_url: Callable[[str], None] | None = None,
     protocols: list[str] | None = None,
+    audio_output: str | None = None,
+    audio_duration: float | None = None,
 ) -> str:
     """Start fake casting receivers and block until a URL is captured.
 
@@ -96,45 +98,56 @@ def capture(
             threading.Thread(target=server.serve_forever, daemon=True).start()
             cleanups.extend([server.shutdown, ssdp.stop])
             started.append("dlna")
-            print(f"  📺 DLNA    \"{name}\" on {local_ip}:{port}", file=sys.stderr)
+            print(f'  📺 DLNA    "{name}" on {local_ip}:{port}', file=sys.stderr)
         except Exception:
             log.warning("Failed to start DLNA", exc_info=True)
-            print(f"  ⚠️  DLNA   failed to start (see --verbose)", file=sys.stderr)
+            print("  ⚠️  DLNA   failed to start (see --verbose)", file=sys.stderr)
 
     # ── AirPlay ────────────────────────────────────────────────────
     if "airplay" in protocols:
         try:
             from .airplay import AirPlayReceiver
+
             airplay_port = port + 1 if "dlna" in protocols else port
-            airplay_recv = AirPlayReceiver(name, local_ip, airplay_port, _handle)
+            airplay_recv = AirPlayReceiver(
+                name,
+                local_ip,
+                airplay_port,
+                _handle,
+                audio_output=audio_output,
+                audio_duration=audio_duration,
+            )
             airplay_recv.start()
             cleanups.append(airplay_recv.stop)
             started.append("airplay")
-            print(f"  🍎 AirPlay \"{name}\" on {local_ip}:{airplay_port}", file=sys.stderr)
+            print(
+                f'  🍎 AirPlay "{name}" on {local_ip}:{airplay_port}', file=sys.stderr
+            )
         except Exception:
             log.warning("Failed to start AirPlay", exc_info=True)
-            print(f"  ⚠️  AirPlay failed to start (see --verbose)", file=sys.stderr)
+            print("  ⚠️  AirPlay failed to start (see --verbose)", file=sys.stderr)
 
     # ── Google Cast ────────────────────────────────────────────────
     if "cast" in protocols:
         try:
             from .cast import CastReceiver
+
             cast_port = 8009
             cast_recv = CastReceiver(name, local_ip, cast_port, _handle)
             cast_recv.start()
             cleanups.append(cast_recv.stop)
             started.append("cast")
-            print(f"  📡 Cast    \"{name}\" on {local_ip}:{cast_port}", file=sys.stderr)
+            print(f'  📡 Cast    "{name}" on {local_ip}:{cast_port}', file=sys.stderr)
         except Exception:
             log.warning("Failed to start Cast", exc_info=True)
-            print(f"  ⚠️  Cast   failed to start (see --verbose)", file=sys.stderr)
+            print("  ⚠️  Cast   failed to start (see --verbose)", file=sys.stderr)
 
     if not started:
         raise RuntimeError("All protocols failed to start")
 
     enabled = ", ".join(p.upper() for p in started)
     print(f"\n  Protocols: {enabled}", file=sys.stderr)
-    print(f"  Open your app > cast > select \"{name}\"\n", file=sys.stderr)
+    print(f'  Open your app > cast > select "{name}"\n', file=sys.stderr)
 
     try:
         event.wait()

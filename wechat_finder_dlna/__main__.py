@@ -30,28 +30,38 @@ examples:
 """,
     )
     parser.add_argument(
-        "--name", default="wechat-finder-dlna",
-        help="device name shown in cast list (default: wechat-finder-dlna)",
+        "--name",
+        default="MAGI",
+        help="device name shown in cast list (default: MAGI)",
     )
     parser.add_argument(
-        "--port", type=int, default=9090,
+        "--port",
+        type=int,
+        default=9090,
         help="base HTTP port for DLNA (default: 9090)",
     )
     parser.add_argument(
-        "--protocol", nargs="+", choices=PROTOCOLS, default=None,
+        "--protocol",
+        nargs="+",
+        choices=PROTOCOLS,
+        default=None,
         metavar="PROTO",
         help=f"protocols to enable (choices: {', '.join(PROTOCOLS)}; default: all)",
     )
     parser.add_argument(
-        "--record", metavar="FILE",
+        "--record",
+        metavar="FILE",
         help="auto-record to FILE with ffmpeg after capture",
     )
     parser.add_argument(
-        "--duration", metavar="HH:MM:SS",
+        "--duration",
+        metavar="HH:MM:SS",
         help="recording duration (ffmpeg format, e.g. 01:00:00)",
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true",
+        "-v",
+        "--verbose",
+        action="store_true",
         help="debug logging",
     )
     args = parser.parse_args()
@@ -64,10 +74,25 @@ examples:
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    url = capture(name=args.name, port=args.port, protocols=args.protocol)
+    # Parse --duration HH:MM:SS to seconds for audio capture
+    audio_dur = None
+    if args.duration:
+        parts = args.duration.split(":")
+        audio_dur = sum(float(p) * m for p, m in zip(parts, [3600, 60, 1]))
+
+    url = capture(
+        name=args.name,
+        port=args.port,
+        protocols=args.protocol,
+        audio_output=args.record,
+        audio_duration=audio_dur,
+    )
     print(f"\n  Captured: {url}\n", file=sys.stderr)
 
-    if args.record:
+    # AirPlay audio capture returns the file path directly — no ffmpeg needed.
+    if args.record and url == args.record:
+        print(f"  Saved to {url}", file=sys.stderr)
+    elif args.record:
         _record(url, args.record, args.duration)
     else:
         print(url)
