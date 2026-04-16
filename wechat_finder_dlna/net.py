@@ -3,29 +3,32 @@
 from __future__ import annotations
 
 import socket
-import subprocess
+
+import ifaddr
 
 
 def get_lan_ip() -> str:
     """Return the first private LAN IP found on a real network interface.
 
-    Parses ``ifconfig`` output to find 192.168.*, 10.*, or 172.* addresses,
-    skipping loopback and virtual IPs (e.g. Surge/Clash VPN gateways).
+    Uses ``ifaddr`` (cross-platform) to enumerate adapters, picking the
+    first private address (192.168.*, 10.*, 172.16–31.*) and skipping
+    loopback and virtual/VPN interfaces.
 
     Falls back to the default-route IP if no private address is found.
     """
-    try:
-        out = subprocess.run(
-            ["ifconfig"], capture_output=True, text=True, timeout=5,
-        ).stdout
-        for line in out.splitlines():
-            line = line.strip()
-            if line.startswith("inet ") and "127.0.0.1" not in line:
-                ip = line.split()[1]
-                if ip.startswith(("192.168.", "10.", "172.")):
+    for adapter in ifaddr.get_adapters():
+        for ip_info in adapter.ips:
+            if not isinstance(ip_info.ip, str):
+                continue  # skip IPv6 tuples
+            ip = ip_info.ip
+            if ip.startswith("127."):
+                continue
+            if ip.startswith(("192.168.", "10.")):
+                return ip
+            if ip.startswith("172."):
+                octet2 = int(ip.split(".")[1])
+                if 16 <= octet2 <= 31:
                     return ip
-    except Exception:
-        pass
 
     # Fallback: default route (may hit VPN).
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
