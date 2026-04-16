@@ -4,15 +4,23 @@
 [![Python](https://img.shields.io/pypi/pyversions/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
 [![License](https://img.shields.io/github/license/gtoxlili/wechat-finder-dlna)](LICENSE)
 
-把你的电脑伪装成一台电视，通过 DLNA 投屏捕获微信视频号的直播流地址。
+把你的电脑伪装成一台电视，通过投屏捕获微信视频号的直播流地址。
 
 不用抓包，不用装证书，不用挂代理，不用碰微信客户端 —— 用的就是你家电视投屏那套标准协议。
 
+同时支持 **三种投屏协议**：
+
+| 协议 | 设备发现 | 捕获方式 |
+|------|---------|---------|
+| **DLNA/UPnP** | SSDP 组播 | `SetAVTransportURI` SOAP 请求 |
+| **AirPlay** | mDNS/Bonjour | HTTP `/play` 端点 |
+| **Google Cast** | mDNS | Cast V2 `LOAD` 命令（TLS） |
+
 ```
-┌──────────┐     DLNA 投屏     ┌─────────────────────┐
-│   微信    │ ──────────────► │ wechat-finder-dlna  │
-│  (手机)   │   "投屏到电视"   │   (你的电脑)         │
-└──────────┘                  └────────┬────────────┘
+┌──────────┐  DLNA / AirPlay  ┌─────────────────────┐
+│   微信    │  / Chromecast   │ wechat-finder-dlna  │
+│  (手机)   │ ──────────────► │   (你的电脑)         │
+└──────────┘   "投屏到电视"   └────────┬────────────┘
                                        │
                               截获 m3u8 直播流地址
                                        │
@@ -24,12 +32,11 @@
 
 微信视频号投屏用的是标准的 DLNA/UPnP 协议，跟投屏到小米电视、索尼电视没有任何区别。
 
-这个工具做的事情很简单：
+这个工具同时伪装成三种设备：
 
-1. 在局域网里通过 SSDP 组播宣告自己是一台「MediaRenderer」（电视）
-2. 你在微信里打开一个直播，点「投屏」，选我们的设备
-3. 微信通过标准 SOAP 请求把真实的 m3u8 直播流地址发过来
-4. 我们把地址截下来，打印出来或者直接喂给 ffmpeg 录制
+1. **DLNA**: 通过 SSDP 组播宣告自己是一台「MediaRenderer」，微信通过 SOAP 请求把 m3u8 地址发过来
+2. **AirPlay**: 通过 Bonjour 广播自己是一台 Apple TV，发送端 POST 视频 URL 到 `/play` 端点
+3. **Chromecast**: 通过 mDNS 广播自己是一台 Chromecast，在 TLS 加密通道上接收 LOAD 命令中的视频 URL
 
 微信没有任何办法区分这个工具和一台真电视 —— 因为走的就是同一套协议，不存在「检测」一说。
 
@@ -43,7 +50,7 @@ uv tool install wechat-finder-dlna
 pip install wechat-finder-dlna
 ```
 
-纯 Python 3.10+ 标准库实现，零外部依赖，装完直接用。
+Python 3.10+，仅依赖 [zeroconf](https://pypi.org/project/zeroconf/)（用于 AirPlay/Cast 的 mDNS 广播）。
 
 ## 用法
 
@@ -52,15 +59,27 @@ pip install wechat-finder-dlna
 ```bash
 $ wechat-finder-dlna
 
-  📺 "wechat-finder-dlna" ready on 192.168.1.100:9090
-     Open WeChat > live/video > cast > select "wechat-finder-dlna"
+  📺 DLNA   "wechat-finder-dlna" on 192.168.1.100:9090
+  🍎 AirPlay "wechat-finder-dlna" on 192.168.1.100:9091
+  📡 Cast   "wechat-finder-dlna" on 192.168.1.100:8009
+
+  Protocols: DLNA, AIRPLAY, CAST
+  Open your app > cast > select "wechat-finder-dlna"
 
   Captured: http://pull-l1.wxlivecdn.com/...m3u8?...
-
-http://pull-l1.wxlivecdn.com/...m3u8?...
 ```
 
 手机和电脑在同一个 WiFi 下，打开视频号直播 → 点投屏 → 选设备，URL 就出来了。
+
+### 指定协议
+
+```bash
+# 只用 DLNA（原有行为）
+wechat-finder-dlna --protocol dlna
+
+# AirPlay + Chromecast
+wechat-finder-dlna --protocol airplay cast
+```
 
 ### 直接录制
 
@@ -95,18 +114,21 @@ from wechat_finder_dlna import capture
 
 url = capture(name="我的录制器")
 print(f"直播流: {url}")
-# 拿到 URL 之后想怎么处理都行
+
+# 指定协议
+url = capture(name="我的录制器", protocols=["dlna", "airplay"])
 ```
 
 ## 不只是微信
 
-虽然名字带 wechat，但所有支持 DLNA 投屏的 App 都能用 —— B 站、爱奇艺、优酷、腾讯视频，底层都是同一套 UPnP 协议。
+虽然名字带 wechat，但所有支持 DLNA/AirPlay/Chromecast 投屏的 App 都能用 —— B 站、爱奇艺、优酷、腾讯视频等。
 
 ## 环境要求
 
 - Python 3.10+
 - 手机和电脑在**同一个局域网**（同一个 WiFi）
 - 录制功能需要 `ffmpeg`
+- Cast 协议需要 `openssl` CLI（macOS/Linux 自带）
 
 ## 常见问题
 
