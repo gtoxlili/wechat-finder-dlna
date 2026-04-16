@@ -263,13 +263,15 @@ class CastReceiver:
             if url:
                 log.debug("Cast captured URL: %s", url)
                 self._on_url(url)
+            # Respond with IDLE/FINISHED so the sender exits casting UI.
             resp = json.dumps({
                 "requestId": request_id,
                 "type": "MEDIA_STATUS",
                 "status": [{
                     "mediaSessionId": 1,
                     "playbackRate": 1,
-                    "playerState": "PLAYING",
+                    "playerState": "IDLE",
+                    "idleReason": "FINISHED",
                     "currentTime": 0,
                     "supportedMediaCommands": 15,
                     "volume": {"level": 1, "muted": False},

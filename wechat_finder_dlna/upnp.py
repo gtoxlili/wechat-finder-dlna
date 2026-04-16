@@ -23,6 +23,7 @@ class UPnPHandler(BaseHTTPRequestHandler):
     device_uuid: str = ""
     friendly_name: str = ""
     on_url: Callable[[str], None] | None = None
+    _captured: bool = False
 
     def log_message(self, *_):
         pass
@@ -55,9 +56,10 @@ class UPnPHandler(BaseHTTPRequestHandler):
         if "SetAVTransportURI" in action:
             self._on_set_uri(body)
         elif "GetTransportInfo" in action:
+            state = "STOPPED" if self._captured else "PLAYING"
             self._xml(200, descriptors.soap_response(
                 "GetTransportInfo", "AVTransport",
-                "<CurrentTransportState>PLAYING</CurrentTransportState>"
+                f"<CurrentTransportState>{state}</CurrentTransportState>"
                 "<CurrentTransportStatus>OK</CurrentTransportStatus>"
                 "<CurrentSpeed>1</CurrentSpeed>",
             ))
@@ -111,6 +113,7 @@ class UPnPHandler(BaseHTTPRequestHandler):
         m = re.search(r"<CurrentURI[^>]*>(.*?)</CurrentURI>", body, re.DOTALL)
         if m and self.on_url:
             url = html.unescape(m.group(1).strip())
+            UPnPHandler._captured = True
             self.on_url(url)
         self._xml(200, descriptors.soap_response("SetAVTransportURI", "AVTransport"))
 
