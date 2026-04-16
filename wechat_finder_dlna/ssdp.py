@@ -67,9 +67,7 @@ class SSDPAdvertiser:
                 data, addr = sock.recvfrom(4096)
                 msg = data.decode("utf-8", errors="replace")
                 if "M-SEARCH" in msg and (
-                    "MediaRenderer" in msg
-                    or "ssdp:all" in msg
-                    or "rootdevice" in msg
+                    "MediaRenderer" in msg or "ssdp:all" in msg or "rootdevice" in msg
                 ):
                     self._respond(sock, addr)
             except socket.timeout:

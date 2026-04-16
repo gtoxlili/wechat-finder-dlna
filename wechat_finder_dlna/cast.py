@@ -41,8 +41,12 @@ NS_MEDIA = "urn:x-cast:com.google.cast.media"
 
 # ── Protobuf helpers ──────────────────────────────────────────────
 
+
 def _build_message(
-    source: str, dest: str, namespace: str, payload: str,
+    source: str,
+    dest: str,
+    namespace: str,
+    payload: str,
 ) -> bytes:
     """Build a length-prefixed CastMessage ready to send on the wire."""
     msg = CastMessage()
@@ -74,23 +78,37 @@ def _payload_dict(msg: CastMessage) -> dict:
 
 # ── TLS cert generation ───────────────────────────────────────────
 
+
 def _generate_self_signed_cert(tmpdir: str) -> tuple[str, str]:
     """Generate a self-signed cert+key pair using openssl CLI."""
     cert = str(Path(tmpdir) / "cast.crt")
     key = str(Path(tmpdir) / "cast.key")
     subprocess.run(
         [
-            "openssl", "req", "-x509", "-newkey", "rsa:2048",
-            "-keyout", key, "-out", cert,
-            "-days", "365", "-nodes",
-            "-subj", "/CN=CastReceiver",
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-keyout",
+            key,
+            "-out",
+            cert,
+            "-days",
+            "365",
+            "-nodes",
+            "-subj",
+            "/CN=CastReceiver",
         ],
-        capture_output=True, check=True, timeout=10,
+        capture_output=True,
+        check=True,
+        timeout=10,
     )
     return cert, key
 
 
 # ── Cast receiver ─────────────────────────────────────────────────
+
 
 class CastReceiver:
     """Google Cast receiver: mDNS + TLS protobuf server on port 8009."""
@@ -170,7 +188,9 @@ class CastReceiver:
                 conn, addr = self._server_sock.accept()
                 log.debug("Cast connection from %s", addr)
                 threading.Thread(
-                    target=self._handle_client, args=(conn,), daemon=True,
+                    target=self._handle_client,
+                    args=(conn,),
+                    daemon=True,
                 ).start()
             except socket.timeout:
                 continue
@@ -223,19 +243,25 @@ class CastReceiver:
                 pass
 
     def _handle_receiver(
-        self, conn: ssl.SSLSocket, payload: dict, source: str, dest: str,
+        self,
+        conn: ssl.SSLSocket,
+        payload: dict,
+        source: str,
+        dest: str,
     ) -> None:
         req_type = payload.get("type", "")
         request_id = payload.get("requestId", 0)
         status = {
-            "applications": [{
-                "appId": payload.get("appId", "CC1AD845"),
-                "displayName": "Default Media Receiver",
-                "isIdleScreen": False,
-                "sessionId": "session-1",
-                "statusText": "",
-                "transportId": "transport-1",
-            }],
+            "applications": [
+                {
+                    "appId": payload.get("appId", "CC1AD845"),
+                    "displayName": "Default Media Receiver",
+                    "isIdleScreen": False,
+                    "sessionId": "session-1",
+                    "statusText": "",
+                    "transportId": "transport-1",
+                }
+            ],
             "volume": {
                 "controlType": "attenuation",
                 "level": 1.0,
@@ -244,15 +270,21 @@ class CastReceiver:
             },
         }
         if req_type in ("GET_STATUS", "LAUNCH"):
-            resp = json.dumps({
-                "requestId": request_id,
-                "type": "RECEIVER_STATUS",
-                "status": status,
-            })
+            resp = json.dumps(
+                {
+                    "requestId": request_id,
+                    "type": "RECEIVER_STATUS",
+                    "status": status,
+                }
+            )
             conn.sendall(_build_message(dest, source, NS_RECEIVER, resp))
 
     def _handle_media(
-        self, conn: ssl.SSLSocket, payload: dict, source: str, dest: str,
+        self,
+        conn: ssl.SSLSocket,
+        payload: dict,
+        source: str,
+        dest: str,
     ) -> None:
         req_type = payload.get("type", "")
         request_id = payload.get("requestId", 0)
@@ -264,27 +296,33 @@ class CastReceiver:
                 log.debug("Cast captured URL: %s", url)
                 self._on_url(url)
             # Respond with IDLE/FINISHED so the sender exits casting UI.
-            resp = json.dumps({
-                "requestId": request_id,
-                "type": "MEDIA_STATUS",
-                "status": [{
-                    "mediaSessionId": 1,
-                    "playbackRate": 1,
-                    "playerState": "IDLE",
-                    "idleReason": "FINISHED",
-                    "currentTime": 0,
-                    "supportedMediaCommands": 15,
-                    "volume": {"level": 1, "muted": False},
-                }],
-            })
+            resp = json.dumps(
+                {
+                    "requestId": request_id,
+                    "type": "MEDIA_STATUS",
+                    "status": [
+                        {
+                            "mediaSessionId": 1,
+                            "playbackRate": 1,
+                            "playerState": "IDLE",
+                            "idleReason": "FINISHED",
+                            "currentTime": 0,
+                            "supportedMediaCommands": 15,
+                            "volume": {"level": 1, "muted": False},
+                        }
+                    ],
+                }
+            )
             conn.sendall(_build_message(dest, source, NS_MEDIA, resp))
 
         elif req_type == "GET_STATUS":
-            resp = json.dumps({
-                "requestId": request_id,
-                "type": "MEDIA_STATUS",
-                "status": [],
-            })
+            resp = json.dumps(
+                {
+                    "requestId": request_id,
+                    "type": "MEDIA_STATUS",
+                    "status": [],
+                }
+            )
             conn.sendall(_build_message(dest, source, NS_MEDIA, resp))
 
     @staticmethod
