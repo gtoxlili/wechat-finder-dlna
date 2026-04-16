@@ -5,13 +5,18 @@ These are static XML templates served over HTTP when a DLNA controller
 """
 
 DEVICE = """<?xml version="1.0" encoding="utf-8"?>
-<root xmlns="urn:schemas-upnp-org:device-1-0">
+<root xmlns="urn:schemas-upnp-org:device-1-0"
+      xmlns:dlna="urn:schemas-dlna-org:device-1-0">
   <specVersion><major>1</major><minor>0</minor></specVersion>
   <device>
     <deviceType>urn:schemas-upnp-org:device:MediaRenderer:1</deviceType>
+    <dlna:X_DLNADOC xmlns:dlna="urn:schemas-dlna-org:device-1-0">DMR-1.50</dlna:X_DLNADOC>
     <friendlyName>{friendly_name}</friendlyName>
     <manufacturer>wechat-finder-dlna</manufacturer>
+    <manufacturerURL>https://github.com/gtoxlili/wechat-finder-dlna</manufacturerURL>
+    <modelDescription>DLNA Digital Media Renderer</modelDescription>
     <modelName>StreamCatcher</modelName>
+    <modelNumber>1</modelNumber>
     <UDN>{uuid}</UDN>
     <serviceList>
       <service>
@@ -123,7 +128,7 @@ CONNMGR_SCPD = """<?xml version="1.0" encoding="utf-8"?>
   <serviceStateTable>
     <stateVariable sendEvents="no"><name>SourceProtocolInfo</name><dataType>string</dataType></stateVariable>
     <stateVariable sendEvents="yes"><name>SinkProtocolInfo</name><dataType>string</dataType>
-      <defaultValue>http-get:*:video/mp4:*,http-get:*:video/x-flv:*,http-get:*:application/vnd.apple.mpegurl:*,http-get:*:video/mpeg:*</defaultValue>
+      <defaultValue>http-get:*:video/mp4:DLNA.ORG_PN=AVC_MP4_MP_SD_AAC_MULT5;DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000,http-get:*:video/mp4:*,http-get:*:video/x-flv:*,http-get:*:video/mpeg:*,http-get:*:video/x-ms-wmv:*,http-get:*:video/x-matroska:*,http-get:*:application/vnd.apple.mpegurl:*,http-get:*:application/x-mpegURL:*,http-get:*:audio/mp4:*,http-get:*:audio/mpeg:*,http-get:*:*:*</defaultValue>
     </stateVariable>
   </serviceStateTable>
 </scpd>"""

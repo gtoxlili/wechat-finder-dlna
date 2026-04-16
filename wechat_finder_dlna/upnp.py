@@ -91,7 +91,13 @@ class UPnPHandler(BaseHTTPRequestHandler):
         }
         body = routes.get(self.path)
         if body:
-            self._xml(200, body.encode())
+            data = body.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", 'text/xml; charset="utf-8"')
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Application-URL", "http://localhost/apps/")
+            self.end_headers()
+            self.wfile.write(data)
         else:
             self._xml(404, b"Not Found")
 
@@ -144,8 +150,19 @@ class UPnPHandler(BaseHTTPRequestHandler):
                 descriptors.soap_response(
                     "GetProtocolInfo",
                     "ConnectionManager",
-                    "<Source/><Sink>http-get:*:video/mp4:*,"
-                    "http-get:*:application/vnd.apple.mpegurl:*</Sink>",
+                    "<Source/><Sink>"
+                    "http-get:*:video/mp4:DLNA.ORG_PN=AVC_MP4_MP_SD_AAC_MULT5;DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000,"
+                    "http-get:*:video/mp4:*,"
+                    "http-get:*:video/x-flv:*,"
+                    "http-get:*:video/mpeg:*,"
+                    "http-get:*:video/x-ms-wmv:*,"
+                    "http-get:*:video/x-matroska:*,"
+                    "http-get:*:application/vnd.apple.mpegurl:*,"
+                    "http-get:*:application/x-mpegURL:*,"
+                    "http-get:*:audio/mp4:*,"
+                    "http-get:*:audio/mpeg:*,"
+                    "http-get:*:*:*"
+                    "</Sink>",
                 ),
             )
         else:
@@ -178,6 +195,7 @@ class UPnPHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("SID", sid)
         self.send_header("TIMEOUT", "Second-1800")
+        self.send_header("Content-Length", "0")
         self.end_headers()
 
     def do_UNSUBSCRIBE(self):
@@ -185,6 +203,7 @@ class UPnPHandler(BaseHTTPRequestHandler):
         with UPnPHandler._subscribers_lock:
             UPnPHandler._subscribers.pop(sid, None)
         self.send_response(200)
+        self.send_header("Content-Length", "0")
         self.end_headers()
 
     # ── internals ───────────────────────────────────────────────────

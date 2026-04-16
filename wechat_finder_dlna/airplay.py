@@ -46,7 +46,15 @@ _FEATURES = (
 )
 _FEATURES_MDNS = f"{hex(_FEATURES & 0xFFFFFFFF)},{hex((_FEATURES >> 32) & 0xFFFFFFFF)}"
 
-_DEVICE_ID = "AA:BB:CC:DD:EE:FF"
+def _get_device_id() -> str:
+    """Derive a stable device ID from the machine's real MAC address."""
+    import uuid as _uuid
+
+    mac = _uuid.getnode()
+    return ":".join(f"{(mac >> (8 * i)) & 0xFF:02X}" for i in reversed(range(6)))
+
+
+_DEVICE_ID = _get_device_id()
 _PI = "2e388006-13ba-4041-9a67-25dd4a43d536"
 _SRCVERS = "366.0"
 
@@ -289,7 +297,7 @@ class AirPlayHandler(BaseHTTPRequestHandler):
             "macAddress": _DEVICE_ID,
             "pi": _PI,
             "pk": self._hap.public_key_hex,
-            "statusFlags": 4,
+            "statusFlags": 0,
             "keepAliveLowPower": True,
             "keepAliveSendStatsAsBody": True,
             "vv": 2,
@@ -418,7 +426,7 @@ class AirPlayReceiver:
             properties={
                 "deviceid": _DEVICE_ID,
                 "features": _FEATURES_MDNS,
-                "flags": "0x04",
+                "flags": "0x44",
                 "model": "AppleTV6,2",
                 "srcvers": _SRCVERS,
                 "pk": pk_hex,

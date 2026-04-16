@@ -58,25 +58,50 @@ class SSDPAdvertiser:
             socket.inet_aton(self._local_ip),
         )
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        # Ensure NOTIFY multicast goes out on the correct LAN interface
+        sock.setsockopt(
+            socket.IPPROTO_IP,
+            socket.IP_MULTICAST_IF,
+            socket.inet_aton(self._local_ip),
+        )
         sock.settimeout(2.0)
 
+        import time
+
+        last_notify = 0.0
         self._notify(sock)
+        last_notify = time.monotonic()
 
         while not self._stop.is_set():
             try:
                 data, addr = sock.recvfrom(4096)
                 msg = data.decode("utf-8", errors="replace")
                 if "M-SEARCH" in msg and (
-                    "MediaRenderer" in msg or "ssdp:all" in msg or "rootdevice" in msg
+                    "MediaRenderer" in msg
+                    or "ssdp:all" in msg
+                    or "rootdevice" in msg
+                    or "AVTransport" in msg
+                    or "RenderingControl" in msg
+                    or "ConnectionManager" in msg
                 ):
                     self._respond(sock, addr)
             except socket.timeout:
+                pass
+
+            # Send NOTIFY every 2 seconds regardless of M-SEARCH traffic,
+            # critical for iOS which relies on passive NOTIFY listening
+            # (iOS NWConnectionGroup drops unicast M-SEARCH responses).
+            now = time.monotonic()
+            if now - last_notify >= 2.0:
                 self._notify(sock)
+                last_notify = now
 
         sock.close()
 
     def _notify(self, sock: socket.socket) -> None:
         for nt in [self._uuid] + _NOTIFY_TYPES:
+            # UPnP spec: when NT is the device UUID itself, USN is just the UUID
+            usn = self._uuid if nt == self._uuid else f"{self._uuid}::{nt}"
             msg = (
                 f"NOTIFY * HTTP/1.1\r\n"
                 f"HOST: {MULTICAST_ADDR}:{MULTICAST_PORT}\r\n"
@@ -84,8 +109,8 @@ class SSDPAdvertiser:
                 f"LOCATION: {self._location}\r\n"
                 f"NT: {nt}\r\n"
                 f"NTS: ssdp:alive\r\n"
-                f"USN: {self._uuid}::{nt}\r\n"
-                f"SERVER: wechat-finder-dlna/1.0 UPnP/1.0\r\n"
+                f"USN: {usn}\r\n"
+                f"SERVER: UPnP/1.0 DLNADOC/1.50 wechat-finder-dlna/1.0\r\n"
                 f"\r\n"
             )
             sock.sendto(msg.encode(), (MULTICAST_ADDR, MULTICAST_PORT))
@@ -98,7 +123,7 @@ class SSDPAdvertiser:
                 f"LOCATION: {self._location}\r\n"
                 f"ST: {st}\r\n"
                 f"USN: {self._uuid}::{st}\r\n"
-                f"SERVER: wechat-finder-dlna/1.0 UPnP/1.0\r\n"
+                f"SERVER: UPnP/1.0 DLNADOC/1.50 wechat-finder-dlna/1.0\r\n"
                 f"EXT:\r\n"
                 f"\r\n"
             )
