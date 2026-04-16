@@ -99,7 +99,7 @@ class SSDPAdvertiser:
                 f"NT: {nt}\r\n"
                 f"NTS: ssdp:alive\r\n"
                 f"USN: {usn}\r\n"
-                f"SERVER: UPnP/1.0 DLNADOC/1.50 wechat-finder-dlna/1.0\r\n"
+                f"SERVER: Linux/4.9 UPnP/1.0 DLNADOC/1.50 Xiaomi-DLNA/1.0\r\n"
                 f"\r\n"
             )
             sock.sendto(msg.encode(), (MULTICAST_ADDR, MULTICAST_PORT))
@@ -114,7 +114,7 @@ class SSDPAdvertiser:
                 f"LOCATION: {self._location}\r\n"
                 f"ST: {st}\r\n"
                 f"USN: {self._uuid}::{st}\r\n"
-                f"SERVER: UPnP/1.0 DLNADOC/1.50 wechat-finder-dlna/1.0\r\n"
+                f"SERVER: Linux/4.9 UPnP/1.0 DLNADOC/1.50 Xiaomi-DLNA/1.0\r\n"
                 f"EXT:\r\n"
                 f"\r\n"
             )
