@@ -9,19 +9,21 @@ import signal
 import subprocess
 import sys
 
-from . import capture
+from . import PROTOCOLS, capture
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Capture WeChat Video Channel (视频号) live stream URLs "
-            "via fake DLNA casting."
+            "via fake screen casting (DLNA / AirPlay / Chromecast)."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 examples:
-  %(prog)s                              # print captured URL
+  %(prog)s                              # all protocols, print captured URL
+  %(prog)s --protocol dlna              # DLNA only
+  %(prog)s --protocol airplay cast      # AirPlay + Chromecast
   %(prog)s --record live.mp4            # record with ffmpeg
   %(prog)s --name "Living Room TV"      # custom device name
   %(prog)s | xargs vlc                  # pipe to VLC
@@ -33,7 +35,12 @@ examples:
     )
     parser.add_argument(
         "--port", type=int, default=9090,
-        help="HTTP port (default: 9090)",
+        help="base HTTP port for DLNA (default: 9090)",
+    )
+    parser.add_argument(
+        "--protocol", nargs="+", choices=PROTOCOLS, default=None,
+        metavar="PROTO",
+        help=f"protocols to enable (choices: {', '.join(PROTOCOLS)}; default: all)",
     )
     parser.add_argument(
         "--record", metavar="FILE",
@@ -57,7 +64,7 @@ examples:
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    url = capture(name=args.name, port=args.port)
+    url = capture(name=args.name, port=args.port, protocols=args.protocol)
     print(f"\n  Captured: {url}\n", file=sys.stderr)
 
     if args.record:

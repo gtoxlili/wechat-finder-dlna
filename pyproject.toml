@@ -1,16 +1,16 @@
 [project]
 name = "wechat-finder-dlna"
 version = "0.1.1"
-description = "Capture WeChat Video Channel (视频号) live streams via fake DLNA screen casting"
+description = "Capture WeChat Video Channel (视频号) live streams via fake screen casting (DLNA / AirPlay / Chromecast)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
-dependencies = []
+dependencies = ["zeroconf>=0.131.0", "protobuf>=4.25.0"]
 authors = [{ name = "gtoxlili" }]
 keywords = [
-    "wechat", "weixin", "dlna", "upnp", "live-stream",
-    "screen-casting", "video-channel", "stream-capture",
-    "视频号", "投屏", "直播",
+    "wechat", "weixin", "dlna", "upnp", "airplay", "chromecast",
+    "google-cast", "live-stream", "screen-casting", "video-channel",
+    "stream-capture", "视频号", "投屏", "直播",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
