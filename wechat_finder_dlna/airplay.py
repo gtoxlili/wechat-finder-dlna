@@ -29,6 +29,7 @@ class AirPlayHandler(BaseHTTPRequestHandler):
 
     on_url: Callable[[str], None] | None = None
     friendly_name: str = ""
+    _captured: bool = False
 
     def log_message(self, *_):
         pass
@@ -43,6 +44,8 @@ class AirPlayHandler(BaseHTTPRequestHandler):
                 "srcvers": "220.68",
             })
             self._respond(200, info, "application/x-apple-binary-plist")
+        elif self.path == "/playback-info":
+            self._handle_playback_info()
         else:
             self._respond(200, b"")
 
@@ -95,6 +98,7 @@ class AirPlayHandler(BaseHTTPRequestHandler):
 
         if url and self.on_url:
             log.debug("AirPlay captured URL: %s", url)
+            AirPlayHandler._captured = True
             self.on_url(url)
 
         self._respond(200, b"")
@@ -106,10 +110,39 @@ class AirPlayHandler(BaseHTTPRequestHandler):
             url = plist.get("Content-Location") or plist.get("url")
             if url and self.on_url:
                 log.debug("AirPlay action captured URL: %s", url)
+                AirPlayHandler._captured = True
                 self.on_url(url)
         except Exception:
             pass
         self._respond(200, b"")
+
+    def _handle_playback_info(self) -> None:
+        """Respond to /playback-info polling from the AirPlay sender.
+
+        After URL capture, report rate=0 (stopped) so the sender
+        exits the casting UI on its own.
+        """
+        if self._captured:
+            info = plistlib.dumps({
+                "duration": 0.0,
+                "position": 0.0,
+                "rate": 0.0,
+                "readyToPlay": False,
+                "playbackBufferEmpty": True,
+                "playbackBufferFull": False,
+                "playbackLikelyToKeepUp": False,
+            })
+        else:
+            info = plistlib.dumps({
+                "duration": 0.0,
+                "position": 0.0,
+                "rate": 1.0,
+                "readyToPlay": True,
+                "playbackBufferEmpty": True,
+                "playbackBufferFull": False,
+                "playbackLikelyToKeepUp": True,
+            })
+        self._respond(200, info, "text/x-apple-plist+xml")
 
     def _respond(self, code: int, body: bytes,
                  content_type: str = "text/x-apple-plist+xml") -> None:
