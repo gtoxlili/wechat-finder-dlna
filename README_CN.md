@@ -1,5 +1,7 @@
 # wechat-finder-dlna
 
+**[Rust 版本 →](https://github.com/gtoxlili/wechat-finder-dlna-rs)**
+
 [![PyPI](https://img.shields.io/pypi/v/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
 [![Python](https://img.shields.io/pypi/pyversions/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
 [![License](https://img.shields.io/github/license/gtoxlili/wechat-finder-dlna)](LICENSE)
@@ -149,11 +151,10 @@ url = capture(name="我的录制器", protocols=["dlna", "airplay"])
 
 ## Rust 版本
 
-如果你需要单文件部署、不想装 Python 环境，可以看 [wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs) —— 功能一致，Rust 异步实现，编译成单个二进制文件。
+> **[wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs)** — 功能一致，Rust 异步实现，编译成单个静态二进制文件，零运行时依赖。适合长时间挂机录制、NAS/嵌入式部署，或者不想装 Python 环境的场景。
 
 ## 相关项目
 
-- [wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs) — Rust 重写版，单文件，异步运行时
 - [macast](https://github.com/xfangfang/Macast) — 带 GUI 的完整 DLNA 渲染器，用 mpv 播放，功能更全但也更重
 - [dlnap](https://github.com/ttymck/dlnap) — 反过来的：从命令行控制局域网里的 DLNA 电视
 

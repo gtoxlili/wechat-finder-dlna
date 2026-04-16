@@ -1,6 +1,6 @@
 # wechat-finder-dlna
 
-[中文文档](README_CN.md)
+[中文文档](README_CN.md) · **[Rust version →](https://github.com/gtoxlili/wechat-finder-dlna-rs)**
 
 [![PyPI](https://img.shields.io/pypi/v/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
 [![Python](https://img.shields.io/pypi/pyversions/wechat-finder-dlna)](https://pypi.org/project/wechat-finder-dlna/)
@@ -116,11 +116,10 @@ No. The protocol is standard UPnP/DLNA. From WeChat's perspective this is just a
 
 ## Rust version
 
-Looking for a single-binary, no-runtime-dependency version? Check out [wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs) — same protocols, async Rust, compiles to one static binary.
+> **[wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs)** — same protocols, async Rust, compiles to a single static binary with zero runtime dependencies. Better suited for long-running capture, embedded/NAS deployment, or if you don't want a Python runtime.
 
 ## See also
 
-- [wechat-finder-dlna-rs](https://github.com/gtoxlili/wechat-finder-dlna-rs) — Rust rewrite, single binary, async runtime
 - [dlnap](https://github.com/ttymck/dlnap) — control DLNA renderers from the command line (the other direction: you push *to* a TV)
 - [macast](https://github.com/xfangfang/Macast) — full-featured DLNA renderer with GUI, uses mpv for playback
 
