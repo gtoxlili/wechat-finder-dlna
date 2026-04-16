@@ -9,6 +9,7 @@ from __future__ import annotations
 import socket
 import struct
 import threading
+from email.utils import formatdate
 
 MULTICAST_ADDR = "239.255.255.250"
 MULTICAST_PORT = 1900
@@ -91,10 +92,12 @@ class SSDPAdvertiser:
             sock.sendto(msg.encode(), (MULTICAST_ADDR, MULTICAST_PORT))
 
     def _respond(self, sock: socket.socket, addr: tuple) -> None:
+        date = formatdate(timeval=None, localtime=False, usegmt=True)
         for st in _SEARCH_TARGETS:
             msg = (
                 f"HTTP/1.1 200 OK\r\n"
                 f"CACHE-CONTROL: max-age=1800\r\n"
+                f"DATE: {date}\r\n"
                 f"LOCATION: {self._location}\r\n"
                 f"ST: {st}\r\n"
                 f"USN: {self._uuid}::{st}\r\n"

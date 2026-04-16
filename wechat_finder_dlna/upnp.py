@@ -144,8 +144,26 @@ class UPnPHandler(BaseHTTPRequestHandler):
                 descriptors.soap_response(
                     "GetProtocolInfo",
                     "ConnectionManager",
-                    "<Source/><Sink>http-get:*:video/mp4:*,"
-                    "http-get:*:application/vnd.apple.mpegurl:*</Sink>",
+                    "<Source/><Sink>"
+                    "http-get:*:video/mp4:*,"
+                    "http-get:*:video/x-matroska:*,"
+                    "http-get:*:video/x-msvideo:*,"
+                    "http-get:*:video/x-flv:*,"
+                    "http-get:*:video/x-ms-wmv:*,"
+                    "http-get:*:video/mpeg:*,"
+                    "http-get:*:video/webm:*,"
+                    "http-get:*:video/3gpp:*,"
+                    "http-get:*:video/quicktime:*,"
+                    "http-get:*:video/m3u8:*,"
+                    "http-get:*:application/vnd.apple.mpegurl:*,"
+                    "http-get:*:application/x-mpegURL:*,"
+                    "http-get:*:audio/mpeg:*,"
+                    "http-get:*:audio/mp4:*,"
+                    "http-get:*:audio/x-ms-wma:*,"
+                    "http-get:*:audio/flac:*,"
+                    "http-get:*:audio/ogg:*,"
+                    "http-get:*:audio/wav:*"
+                    "</Sink>",
                 ),
             )
         else:
@@ -171,9 +189,16 @@ class UPnPHandler(BaseHTTPRequestHandler):
         # CALLBACK header looks like: <http://192.168.1.5:12345/event>
         m = re.search(r"<(.+?)>", callback)
         if m and "AVTransport" in self.path:
+            callback_url = m.group(1)
             with UPnPHandler._subscribers_lock:
-                UPnPHandler._subscribers[sid] = m.group(1)
-            log.debug("SUBSCRIBE from %s (SID=%s)", m.group(1), sid)
+                UPnPHandler._subscribers[sid] = callback_url
+            log.debug("SUBSCRIBE from %s (SID=%s)", callback_url, sid)
+            # UPnP spec: send initial event with current state (SEQ=0)
+            threading.Thread(
+                target=_send_notify,
+                args=(callback_url, sid),
+                daemon=True,
+            ).start()
 
         self.send_response(200)
         self.send_header("SID", sid)
