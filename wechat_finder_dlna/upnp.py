@@ -203,6 +203,7 @@ class UPnPHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("SID", sid)
         self.send_header("TIMEOUT", "Second-1800")
+        self.send_header("Content-Length", "0")
         self.end_headers()
 
     def do_UNSUBSCRIBE(self):
@@ -210,6 +211,7 @@ class UPnPHandler(BaseHTTPRequestHandler):
         with UPnPHandler._subscribers_lock:
             UPnPHandler._subscribers.pop(sid, None)
         self.send_response(200)
+        self.send_header("Content-Length", "0")
         self.end_headers()
 
     # ── internals ───────────────────────────────────────────────────
