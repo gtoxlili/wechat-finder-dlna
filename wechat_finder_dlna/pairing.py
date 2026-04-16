@@ -23,9 +23,6 @@ from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 
 log = logging.getLogger(__name__)
 
-# ── HKDF-SHA-256 helpers (matching the hkdf library defaults) ────
-
-
 def _hkdf_extract(salt: bytes, ikm: bytes) -> bytes:
     return _hmac.new(salt, ikm, hashlib.sha256).digest()
 
@@ -33,9 +30,6 @@ def _hkdf_extract(salt: bytes, ikm: bytes) -> bytes:
 def _hkdf_expand(prk: bytes, info: bytes, length: int) -> bytes:
     """Single-block HKDF-Expand (SHA-256).  length ≤ 32."""
     return _hmac.new(prk, info + b"\x01", hashlib.sha256).digest()[:length]
-
-
-# ── ChaCha20-Poly1305 helpers ───────────────────────────────────
 
 
 def _cc_encrypt(key: bytes, nonce: bytes, pt: bytes) -> tuple[bytes, bytes]:
@@ -47,9 +41,6 @@ def _cc_encrypt(key: bytes, nonce: bytes, pt: bytes) -> tuple[bytes, bytes]:
 def _cc_decrypt(key: bytes, nonce: bytes, ct: bytes, tag: bytes) -> bytes:
     nonce = nonce.rjust(12, b"\x00")
     return ChaCha20Poly1305(key).decrypt(nonce, ct + tag, None)
-
-
-# ── TLV8 codec ──────────────────────────────────────────────────
 
 
 class _Tag:
@@ -90,8 +81,6 @@ def _tlv_encode(items: list) -> bytes:
             out += bytes([tag, left]) + value[-left:]
     return out
 
-
-# ── SRP-6a server (3072-bit, SHA-512) ───────────────────────────
 
 _N = int(
     "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E08"
@@ -185,8 +174,6 @@ class _SRPServer:
         return True
 
 
-# ── FairPlay stub ───────────────────────────────────────────────
-
 _FP_REPLIES = [
     b"\x46\x50\x4c\x59\x03\x01\x02\x00\x00\x00\x00\x82\x02\x00\x0f\x9f\x3f\x9e\x0a\x25\x21\xdb\xdf\x31\x2a\xb2\xbf\xb2\x9e\x8d\x23\x2b\x63\x76\xa8\xc8\x18\x70\x1d\x22\xae\x93\xd8\x27\x37\xfe\xaf\x9d\xb4\xfd\xf4\x1c\x2d\xba\x9d\x1f\x49\xca\xaa\xbf\x65\x91\xac\x1f\x7b\xc6\xf7\xe0\x66\x3d\x21\xaf\xe0\x15\x65\x95\x3e\xab\x81\xf4\x18\xce\xed\x09\x5a\xdb\x7c\x3d\x0e\x25\x49\x09\xa7\x98\x31\xd4\x9c\x39\x82\x97\x34\x34\xfa\xcb\x42\xc6\x3a\x1c\xd9\x11\xa6\xfe\x94\x1a\x8a\x6d\x4a\x74\x3b\x46\xc3\xa7\x64\x9e\x44\xc7\x89\x55\xe4\x9d\x81\x55\x00\x95\x49\xc4\xe2\xf7\xa3\xf6\xd5\xba",
     b"\x46\x50\x4c\x59\x03\x01\x02\x00\x00\x00\x00\x82\x02\x01\xcf\x32\xa2\x57\x14\xb2\x52\x4f\x8a\xa0\xad\x7a\xf1\x64\xe3\x7b\xcf\x44\x24\xe2\x00\x04\x7e\xfc\x0a\xd6\x7a\xfc\xd9\x5d\xed\x1c\x27\x30\xbb\x59\x1b\x96\x2e\xd6\x3a\x9c\x4d\xed\x88\xba\x8f\xc7\x8d\xe6\x4d\x91\xcc\xfd\x5c\x7b\x56\xda\x88\xe3\x1f\x5c\xce\xaf\xc7\x43\x19\x95\xa0\x16\x65\xa5\x4e\x19\x39\xd2\x5b\x94\xdb\x64\xb9\xe4\x5d\x8d\x06\x3e\x1e\x6a\xf0\x7e\x96\x56\x16\x2b\x0e\xfa\x40\x42\x75\xea\x5a\x44\xd9\x59\x1c\x72\x56\xb9\xfb\xe6\x51\x38\x98\xb8\x02\x27\x72\x19\x88\x57\x16\x50\x94\x2a\xd9\x46\x68\x8a",
@@ -212,9 +199,6 @@ def fairplay_setup(request: bytes) -> bytes | None:
     return None
 
 
-# ── HAP session (transient pair-setup + pair-verify) ─────────────
-
-
 class HapSession:
     """Per-connection AirPlay pairing state."""
 
@@ -234,7 +218,6 @@ class HapSession:
         self.encrypted = False
         self.shared_key: bytes | None = None
         self._srp: _SRPServer | None = None
-        # pair-verify state
         self._cv_priv: x25519.X25519PrivateKey | None = None
         self._cv_pub: bytes = b""
         self._client_cv_pub: bytes = b""
@@ -242,8 +225,6 @@ class HapSession:
     @property
     def public_key_hex(self) -> str:
         return self._ltpk.hex()
-
-    # ── pair-setup (transient, 2 round-trips) ────────────────────
 
     def pair_setup(self, body: bytes) -> bytes:
         req = _tlv_decode(body)
@@ -289,8 +270,6 @@ class HapSession:
                 self._srp.proof,
             ]
         )
-
-    # ── pair-verify (2 round-trips) ──────────────────────────────
 
     def pair_verify(self, body: bytes) -> bytes:
         req = _tlv_decode(body)
@@ -348,9 +327,6 @@ class HapSession:
         return _tlv_encode([_Tag.STATE, b"\x04"])
 
 
-# ── HAPSocket — encrypted socket wrapper ────────────────────────
-
-
 class HAPSocket:
     """Wraps a TCP socket with HAP (ChaCha20-Poly1305) encryption.
 
@@ -379,8 +355,6 @@ class HAPSocket:
         self._in_total = 0
         self._in_got = 0
 
-    # ── proxy unknown attrs to the real socket ───────────────────
-
     def __getattr__(self, name):
         return getattr(self.socket, name)
 
@@ -396,8 +370,6 @@ class HAPSocket:
         import socket as _sock_mod
 
         return _sock_mod.socket.makefile(self, *args, **kwargs)
-
-    # ── receive (decrypt) ────────────────────────────────────────
 
     def recv_into(self, buf, nbytes=1042, flags=0):
         data = self.recv(nbytes, flags)
@@ -442,8 +414,6 @@ class HAPSocket:
                     self._in_buf = None
                     break
         return result
-
-    # ── send (encrypt) ───────────────────────────────────────────
 
     def send(self, data, flags=0):
         return self.sendall(data, flags)

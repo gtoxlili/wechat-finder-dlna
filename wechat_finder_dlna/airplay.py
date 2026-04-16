@@ -25,7 +25,6 @@ from .pairing import HAPSocket, HapSession, fairplay_setup
 
 log = logging.getLogger(__name__)
 
-# ── AirPlay 2 features (64-bit) ──────────────────────────────────
 _FEATURES = (
     (1 << 48)  # TransientPairing
     | (1 << 47)  # PeerManagement
@@ -95,8 +94,6 @@ class AirPlayHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         log.debug("AirPlay HTTP: %s", fmt % args)
 
-    # ── GET ────────────────────────────────────────────────────────
-
     def do_GET(self):
         length = int(self.headers.get("Content-Length", 0))
         if length:
@@ -107,8 +104,6 @@ class AirPlayHandler(BaseHTTPRequestHandler):
             self._handle_playback_info()
         else:
             self._respond(200, b"")
-
-    # ── POST ───────────────────────────────────────────────────────
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -150,15 +145,11 @@ class AirPlayHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-    # ── PUT ────────────────────────────────────────────────────────
-
     def do_PUT(self):
         length = int(self.headers.get("Content-Length", 0))
         if length:
             self.rfile.read(length)
         self._respond(200, b"")
-
-    # ── RTSP methods ──────────────────────────────────────────────
 
     def do_SETUP(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -251,8 +242,6 @@ class AirPlayHandler(BaseHTTPRequestHandler):
             self.rfile.read(length)
         self._respond(200, b"")
 
-    # ── Pairing handlers ──────────────────────────────────────────
-
     def _handle_pair_setup(self, body: bytes) -> None:
         res = self._hap.pair_setup(body)
         self._respond(200, res, "application/octet-stream")
@@ -280,8 +269,6 @@ class AirPlayHandler(BaseHTTPRequestHandler):
         self.rfile = self.connection.makefile("rb", self.rbufsize)
         self.wfile = self.connection.makefile("wb", self.wbufsize)
         self._is_encrypted = True
-
-    # ── Payload handlers ──────────────────────────────────────────
 
     def _send_device_info(self) -> None:
         d = {
@@ -361,8 +348,6 @@ class AirPlayHandler(BaseHTTPRequestHandler):
             }
         body = plistlib.dumps(info, fmt=plistlib.FMT_XML)
         self._respond(200, body, "text/x-apple-plist+xml")
-
-    # ── Response helpers ──────────────────────────────────────────
 
     def _echo_cseq(self) -> None:
         cseq = self.headers.get("CSeq")

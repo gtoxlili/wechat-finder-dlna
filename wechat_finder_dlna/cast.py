@@ -31,15 +31,10 @@ from .generated.cast_channel_pb2 import CastMessage
 
 log = logging.getLogger(__name__)
 
-# ── Cast V2 namespaces ────────────────────────────────────────────
-
 NS_CONNECTION = "urn:x-cast:com.google.cast.tp.connection"
 NS_HEARTBEAT = "urn:x-cast:com.google.cast.tp.heartbeat"
 NS_RECEIVER = "urn:x-cast:com.google.cast.receiver"
 NS_MEDIA = "urn:x-cast:com.google.cast.media"
-
-
-# ── Protobuf helpers ──────────────────────────────────────────────
 
 
 def _build_message(
@@ -76,9 +71,6 @@ def _payload_dict(msg: CastMessage) -> dict:
         return {}
 
 
-# ── TLS cert generation ───────────────────────────────────────────
-
-
 def _generate_self_signed_cert(tmpdir: str) -> tuple[str, str]:
     """Generate a self-signed cert+key pair using openssl CLI."""
     cert = str(Path(tmpdir) / "cast.crt")
@@ -105,9 +97,6 @@ def _generate_self_signed_cert(tmpdir: str) -> tuple[str, str]:
         timeout=10,
     )
     return cert, key
-
-
-# ── Cast receiver ─────────────────────────────────────────────────
 
 
 class CastReceiver:
@@ -146,7 +135,6 @@ class CastReceiver:
 
         threading.Thread(target=self._accept_loop, daemon=True).start()
 
-        # Cast device UUID (8 hex chars)
         device_uuid = "aabbccdd"
         self._info = ServiceInfo(
             "_googlecast._tcp.local.",
@@ -202,7 +190,6 @@ class CastReceiver:
     def _handle_client(self, conn: ssl.SSLSocket) -> None:
         try:
             while not self._stop_event.is_set():
-                # Read 4-byte big-endian length prefix
                 header = self._recv_exact(conn, 4)
                 if not header:
                     break

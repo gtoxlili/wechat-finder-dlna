@@ -20,8 +20,6 @@ from . import descriptors
 
 log = logging.getLogger(__name__)
 
-# ── UPnP LastChange event XML ─────────────────────────────────────
-
 _LAST_CHANGE_STOPPED = (
     "&lt;Event xmlns=&quot;urn:schemas-upnp-org:metadata-1-0/AVT/&quot;&gt;"
     "&lt;InstanceID val=&quot;0&quot;&gt;"
@@ -65,19 +63,15 @@ def _send_notify(callback_url: str, sid: str) -> None:
 class UPnPHandler(BaseHTTPRequestHandler):
     """HTTP request handler for a fake DLNA MediaRenderer."""
 
-    # Set by the caller before starting the server.
     device_uuid: str = ""
     friendly_name: str = ""
     on_url: Callable[[str], None] | None = None
     _captured: bool = False
-    # {sid: callback_url} — subscribers for AVTransport events.
     _subscribers: dict[str, str] = {}
     _subscribers_lock = threading.Lock()
 
     def log_message(self, *_):
         pass
-
-    # ── GET: serve XML descriptors ──────────────────────────────────
 
     def do_GET(self):
         routes = {
@@ -94,8 +88,6 @@ class UPnPHandler(BaseHTTPRequestHandler):
             self._xml(200, body.encode())
         else:
             self._xml(404, b"Not Found")
-
-    # ── POST: handle SOAP actions ───────────────────────────────────
 
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode(
@@ -167,7 +159,6 @@ class UPnPHandler(BaseHTTPRequestHandler):
                 ),
             )
         else:
-            # Play / Stop / Pause / anything else → 200 OK.
             name = next(
                 (n for n in ("Play", "Stop", "Pause") if n in action),
                 "Unknown",
@@ -181,12 +172,9 @@ class UPnPHandler(BaseHTTPRequestHandler):
             )
             self._xml(200, descriptors.soap_response(name, svc))
 
-    # ── SUBSCRIBE / UNSUBSCRIBE ─────────────────────────────────────
-
     def do_SUBSCRIBE(self):
         sid = f"uuid:{uuid.uuid4()}"
         callback = self.headers.get("CALLBACK", "")
-        # CALLBACK header looks like: <http://192.168.1.5:12345/event>
         m = re.search(r"<(.+?)>", callback)
         if m and "AVTransport" in self.path:
             callback_url = m.group(1)
@@ -213,8 +201,6 @@ class UPnPHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Length", "0")
         self.end_headers()
-
-    # ── internals ───────────────────────────────────────────────────
 
     def _on_set_uri(self, body: str) -> None:
         m = re.search(r"<CurrentURI[^>]*>(.*?)</CurrentURI>", body, re.DOTALL)

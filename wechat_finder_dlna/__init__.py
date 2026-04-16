@@ -75,7 +75,7 @@ def capture(
 
     def _handle(url: str) -> None:
         if result:
-            return  # already captured
+            return
         result.append(url)
         if on_url:
             on_url(url)
@@ -84,7 +84,6 @@ def capture(
     cleanups: list[Callable[[], None]] = []
     started: list[str] = []
 
-    # ── DLNA ───────────────────────────────────────────────────────
     if "dlna" in protocols:
         try:
             location = f"http://{local_ip}:{port}/device.xml"
@@ -103,7 +102,6 @@ def capture(
             log.warning("Failed to start DLNA", exc_info=True)
             print("  ⚠️  DLNA   failed to start (see --verbose)", file=sys.stderr)
 
-    # ── AirPlay ────────────────────────────────────────────────────
     if "airplay" in protocols:
         try:
             from .airplay import AirPlayReceiver
@@ -127,7 +125,6 @@ def capture(
             log.warning("Failed to start AirPlay", exc_info=True)
             print("  ⚠️  AirPlay failed to start (see --verbose)", file=sys.stderr)
 
-    # ── Google Cast ────────────────────────────────────────────────
     if "cast" in protocols:
         try:
             from .cast import CastReceiver
