@@ -8,13 +8,21 @@
 
 Grab WeChat Video Channel (视频号) live stream URLs by faking a TV on your LAN.
 
-No proxy, no certificate, no MITM — just plain DLNA, the same protocol your smart TV speaks.
+No proxy, no certificate, no MITM — just standard casting protocols your smart TV already speaks.
+
+Supports **three casting protocols** simultaneously:
+
+| Protocol | Discovery | How it captures |
+|----------|-----------|----------------|
+| **DLNA/UPnP** | SSDP multicast | `SetAVTransportURI` SOAP action |
+| **AirPlay** | mDNS/Bonjour | HTTP `/play` endpoint |
+| **Google Cast** | mDNS | Cast V2 `LOAD` command over TLS |
 
 ```
-┌──────────┐    DLNA cast     ┌─────────────────────┐
-│  WeChat   │ ──────────────► │ wechat-finder-dlna  │
-│  (phone)  │  "投屏"         │ (your computer)     │
-└──────────┘                  └────────┬────────────┘
+┌──────────┐  DLNA / AirPlay  ┌─────────────────────┐
+│  WeChat   │  / Chromecast   │ wechat-finder-dlna  │
+│  (phone)  │ ──────────────► │ (your computer)     │
+└──────────┘   "投屏"         └────────┬────────────┘
                                        │
                               captures the m3u8 URL
                                        │
@@ -22,10 +30,9 @@ No proxy, no certificate, no MITM — just plain DLNA, the same protocol your sm
                               ffmpeg / VLC / mpv / ...
 ```
 
-The tool advertises itself as a UPnP MediaRenderer on the local network.
-When you cast a live stream from WeChat (or Bilibili, iQiyi, Youku — anything that supports DLNA),
-the app sends the real stream URL over via the standard `SetAVTransportURI` SOAP action.
-We grab it and either print it or pipe it straight into ffmpeg.
+The tool advertises itself as a media receiver on the local network using all three protocols.
+When you cast a live stream from WeChat (or Bilibili, iQiyi, Youku — anything that supports casting),
+the app sends the real stream URL. We grab it and either print it or pipe it straight into ffmpeg.
 
 WeChat can't tell the difference between this and a real TV — there's nothing to detect.
 
@@ -39,13 +46,19 @@ uv tool install wechat-finder-dlna
 pip install wechat-finder-dlna
 ```
 
-Pure Python 3.10+, zero external dependencies.
+Python 3.10+, single dependency ([zeroconf](https://pypi.org/project/zeroconf/) for AirPlay/Cast mDNS).
 
 ## Quick start
 
 ```bash
-# Print the captured URL to stdout
+# All protocols enabled by default
 wechat-finder-dlna
+
+# DLNA only (original behavior)
+wechat-finder-dlna --protocol dlna
+
+# AirPlay + Chromecast only
+wechat-finder-dlna --protocol airplay cast
 
 # Record to file (needs ffmpeg)
 wechat-finder-dlna --record live.mp4 --duration 01:00:00
@@ -64,6 +77,9 @@ from wechat_finder_dlna import capture
 
 url = capture(name="My Recorder")
 # do whatever you want with the m3u8 URL
+
+# Specify protocols
+url = capture(name="My TV", protocols=["dlna", "airplay"])
 ```
 
 ## Requirements
@@ -71,14 +87,23 @@ url = capture(name="My Recorder")
 - Python 3.10+
 - Phone and computer on the **same WiFi / LAN**
 - `ffmpeg` only if you use `--record`
+- `openssl` CLI (for Cast protocol TLS cert generation; pre-installed on macOS/Linux)
 
 ## How it works
 
-1. **SSDP multicast** — the tool announces a MediaRenderer on `239.255.255.250:1900` so cast-capable apps can discover it.
-2. **UPnP device description** — when an app queries the device, we reply with a minimal XML descriptor that looks like a TV.
-3. **SOAP control** — the app sends `SetAVTransportURI` with the real stream URL. We extract the URL from the SOAP body and we're done.
+### DLNA/UPnP
+1. **SSDP multicast** — announces a MediaRenderer on `239.255.255.250:1900`.
+2. **UPnP device description** — replies with XML descriptor that looks like a TV.
+3. **SOAP control** — the app sends `SetAVTransportURI` with the stream URL.
 
-The entire implementation is ~500 lines of stdlib Python (http.server, socket, xml, threading). No C extensions, no compiled bits.
+### AirPlay
+1. **mDNS/Bonjour** — advertises an `_airplay._tcp` service via zeroconf.
+2. **HTTP server** — handles the `/play` endpoint where senders POST the video URL.
+
+### Google Cast (Chromecast)
+1. **mDNS** — advertises a `_googlecast._tcp` service.
+2. **TLS + Cast V2** — runs a TLS server on port 8009 speaking the Cast protobuf protocol.
+3. **Media LOAD** — captures the `contentId` URL from the sender's LOAD command.
 
 ## FAQ
 
@@ -86,7 +111,7 @@ The entire implementation is ~500 lines of stdlib Python (http.server, socket, x
 This is for live streams. For VOD downloads, look into tools that use the WeChat Web sync protocol.
 
 **Does this work with apps other than WeChat?**
-Yes — any app that supports DLNA casting works. Bilibili, iQiyi, Youku, Tencent Video, etc.
+Yes — any app that supports DLNA/AirPlay/Chromecast casting works. Bilibili, iQiyi, Youku, Tencent Video, etc.
 
 **Can WeChat detect or block this?**
 No. The protocol is standard UPnP/DLNA. From WeChat's perspective this is just another TV on the network.

@@ -3,7 +3,7 @@
 Pretends to be a TV on your local network. When you cast a WeChat Video
 Channel (视频号) live stream to it, the real m3u8 stream URL is captured.
 
-Zero dependencies. Pure Python 3.10+ standard library.
+Supports multiple casting protocols: DLNA/UPnP, AirPlay, and Google Cast.
 
 Example::
 
@@ -11,6 +11,12 @@ Example::
 
     url = capture(name="My TV")
     print(f"Stream: {url}")
+
+    # AirPlay only
+    url = capture(name="My TV", protocols=["airplay"])
+
+    # All protocols
+    url = capture(name="My TV", protocols=["dlna", "airplay", "cast"])
 """
 
 from __future__ import annotations
@@ -27,57 +33,99 @@ from .upnp import UPnPHandler
 
 __all__ = ["capture"]
 
+PROTOCOLS = ("dlna", "airplay", "cast")
+
 
 def capture(
     *,
     name: str = "wechat-finder-dlna",
     port: int = 9090,
     on_url: Callable[[str], None] | None = None,
+    protocols: list[str] | None = None,
 ) -> str:
-    """Start a fake DLNA renderer and block until a URL is captured.
+    """Start fake casting receivers and block until a URL is captured.
 
     Args:
         name: Device name shown in the cast list.
-        port: HTTP port for the UPnP device server.
+        port: Base HTTP port. DLNA uses *port*, AirPlay uses *port+1*,
+              Cast uses 8009.
         on_url: Optional callback fired when a URL is captured.
+        protocols: List of protocols to enable. Defaults to all:
+                   ``["dlna", "airplay", "cast"]``.
 
     Returns:
         The captured stream/video URL.
     """
+    if protocols is None:
+        protocols = list(PROTOCOLS)
+    for p in protocols:
+        if p not in PROTOCOLS:
+            raise ValueError(f"Unknown protocol {p!r}, expected one of {PROTOCOLS}")
+
     local_ip = get_lan_ip()
     dev_uuid = f"uuid:{uuid.uuid4()}"
-    location = f"http://{local_ip}:{port}/device.xml"
 
     result: list[str] = []
     event = threading.Event()
 
     def _handle(url: str) -> None:
+        if result:
+            return  # already captured
         result.append(url)
         if on_url:
             on_url(url)
         event.set()
 
-    UPnPHandler.device_uuid = dev_uuid
-    UPnPHandler.friendly_name = name
-    UPnPHandler.on_url = staticmethod(_handle)
+    cleanups: list[Callable[[], None]] = []
 
-    server = HTTPServer(("", port), UPnPHandler)
-    ssdp = SSDPAdvertiser(dev_uuid, location, local_ip)
+    # ── DLNA ───────────────────────────────────────────────────────
+    if "dlna" in protocols:
+        location = f"http://{local_ip}:{port}/device.xml"
+        UPnPHandler.device_uuid = dev_uuid
+        UPnPHandler.friendly_name = name
+        UPnPHandler.on_url = staticmethod(_handle)
 
-    print(f'\n  📺 "{name}" ready on {local_ip}:{port}', file=sys.stderr)
-    print(f'     Open WeChat > live/video > cast > select "{name}"\n', file=sys.stderr)
+        server = HTTPServer(("", port), UPnPHandler)
+        ssdp = SSDPAdvertiser(dev_uuid, location, local_ip)
+        ssdp.start()
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        cleanups.extend([server.shutdown, ssdp.stop])
+        print(f"  📺 DLNA   \"{name}\" on {local_ip}:{port}", file=sys.stderr)
 
-    ssdp.start()
-    srv_thread = threading.Thread(target=server.serve_forever, daemon=True)
-    srv_thread.start()
+    # ── AirPlay ────────────────────────────────────────────────────
+    airplay_recv = None
+    if "airplay" in protocols:
+        from .airplay import AirPlayReceiver
+        airplay_port = port + 1 if "dlna" in protocols else port
+        airplay_recv = AirPlayReceiver(name, local_ip, airplay_port, _handle)
+        airplay_recv.start()
+        cleanups.append(airplay_recv.stop)
+        print(f"  🍎 AirPlay \"{name}\" on {local_ip}:{airplay_port}", file=sys.stderr)
+
+    # ── Google Cast ────────────────────────────────────────────────
+    cast_recv = None
+    if "cast" in protocols:
+        from .cast import CastReceiver
+        cast_port = 8009
+        cast_recv = CastReceiver(name, local_ip, cast_port, _handle)
+        cast_recv.start()
+        cleanups.append(cast_recv.stop)
+        print(f"  📡 Cast   \"{name}\" on {local_ip}:{cast_port}", file=sys.stderr)
+
+    enabled = ", ".join(p.upper() for p in protocols)
+    print(f"\n  Protocols: {enabled}", file=sys.stderr)
+    print(f"  Open your app > cast > select \"{name}\"\n", file=sys.stderr)
 
     try:
         event.wait()
     except KeyboardInterrupt:
         pass
     finally:
-        server.shutdown()
-        ssdp.stop()
+        for fn in cleanups:
+            try:
+                fn()
+            except Exception:
+                pass
 
     if not result:
         raise RuntimeError("No URL captured")
