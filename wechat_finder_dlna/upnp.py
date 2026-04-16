@@ -8,12 +8,58 @@ carries the video URL we want to capture.
 from __future__ import annotations
 
 import html
+import logging
 import re
+import threading
 import uuid
 from http.server import BaseHTTPRequestHandler
 from typing import Callable
+from urllib.request import Request, urlopen
 
 from . import descriptors
+
+log = logging.getLogger(__name__)
+
+# ── UPnP LastChange event XML ─────────────────────────────────────
+
+_LAST_CHANGE_STOPPED = (
+    '&lt;Event xmlns=&quot;urn:schemas-upnp-org:metadata-1-0/AVT/&quot;&gt;'
+    '&lt;InstanceID val=&quot;0&quot;&gt;'
+    '&lt;TransportState val=&quot;STOPPED&quot;/&gt;'
+    '&lt;/InstanceID&gt;'
+    '&lt;/Event&gt;'
+)
+
+_NOTIFY_BODY = (
+    '<?xml version="1.0" encoding="utf-8"?>\n'
+    '<e:propertyset xmlns:e="urn:schemas-upnp-org:event-1-0">\n'
+    '  <e:property>\n'
+    '    <LastChange>{last_change}</LastChange>\n'
+    '  </e:property>\n'
+    '</e:propertyset>'
+)
+
+
+def _send_notify(callback_url: str, sid: str) -> None:
+    """Send a UPnP NOTIFY event with TransportState=STOPPED."""
+    body = _NOTIFY_BODY.format(last_change=_LAST_CHANGE_STOPPED).encode()
+    try:
+        req = Request(
+            callback_url,
+            data=body,
+            method="NOTIFY",
+            headers={
+                "Content-Type": 'text/xml; charset="utf-8"',
+                "NT": "upnp:event",
+                "NTS": "upnp:propchange",
+                "SID": sid,
+                "SEQ": "0",
+                "Content-Length": str(len(body)),
+            },
+        )
+        urlopen(req, timeout=3)
+    except Exception:
+        log.debug("Failed to send NOTIFY to %s", callback_url, exc_info=True)
 
 
 class UPnPHandler(BaseHTTPRequestHandler):
@@ -24,6 +70,9 @@ class UPnPHandler(BaseHTTPRequestHandler):
     friendly_name: str = ""
     on_url: Callable[[str], None] | None = None
     _captured: bool = False
+    # {sid: callback_url} — subscribers for AVTransport events.
+    _subscribers: dict[str, str] = {}
+    _subscribers_lock = threading.Lock()
 
     def log_message(self, *_):
         pass
@@ -98,12 +147,24 @@ class UPnPHandler(BaseHTTPRequestHandler):
     # ── SUBSCRIBE / UNSUBSCRIBE ─────────────────────────────────────
 
     def do_SUBSCRIBE(self):
+        sid = f"uuid:{uuid.uuid4()}"
+        callback = self.headers.get("CALLBACK", "")
+        # CALLBACK header looks like: <http://192.168.1.5:12345/event>
+        m = re.search(r"<(.+?)>", callback)
+        if m and "AVTransport" in self.path:
+            with UPnPHandler._subscribers_lock:
+                UPnPHandler._subscribers[sid] = m.group(1)
+            log.debug("SUBSCRIBE from %s (SID=%s)", m.group(1), sid)
+
         self.send_response(200)
-        self.send_header("SID", f"uuid:{uuid.uuid4()}")
+        self.send_header("SID", sid)
         self.send_header("TIMEOUT", "Second-1800")
         self.end_headers()
 
     def do_UNSUBSCRIBE(self):
+        sid = self.headers.get("SID", "")
+        with UPnPHandler._subscribers_lock:
+            UPnPHandler._subscribers.pop(sid, None)
         self.send_response(200)
         self.end_headers()
 
@@ -115,7 +176,19 @@ class UPnPHandler(BaseHTTPRequestHandler):
             url = html.unescape(m.group(1).strip())
             UPnPHandler._captured = True
             self.on_url(url)
+            # Push STOPPED event to all AVTransport subscribers.
+            self._notify_stopped()
         self._xml(200, descriptors.soap_response("SetAVTransportURI", "AVTransport"))
+
+    @staticmethod
+    def _notify_stopped() -> None:
+        """Send LastChange STOPPED event to all AVTransport subscribers."""
+        with UPnPHandler._subscribers_lock:
+            subs = dict(UPnPHandler._subscribers)
+        for sid, url in subs.items():
+            threading.Thread(
+                target=_send_notify, args=(url, sid), daemon=True,
+            ).start()
 
     def _xml(self, code: int, body: bytes) -> None:
         self.send_response(code)
