@@ -1,6 +1,6 @@
 [project]
 name = "wechat-finder-dlna"
-version = "0.4.2"
+version = "0.4.3"
 description = "Capture WeChat Video Channel (视频号) live streams via fake screen casting (DLNA / AirPlay / Chromecast)"
 readme = "README.md"
 requires-python = ">=3.10"
