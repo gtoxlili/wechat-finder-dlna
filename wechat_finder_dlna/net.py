@@ -60,3 +60,24 @@ def get_lan_ip() -> str:
         return s.getsockname()[0]
     finally:
         s.close()
+
+
+def resolve_bind(val: str) -> str:
+    """Resolve a bind target to an IP address.
+
+    Accepts either an IP address ("192.168.1.100") or an interface name ("en1").
+    """
+    # If it looks like an IP, use directly.
+    try:
+        socket.inet_aton(val)
+        return val
+    except OSError:
+        pass
+
+    # Otherwise treat as interface name.
+    for adapter in ifaddr.get_adapters():
+        if adapter.name == val:
+            for ip_info in adapter.ips:
+                if isinstance(ip_info.ip, str) and not ip_info.ip.startswith("127."):
+                    return ip_info.ip
+    raise RuntimeError(f"no IPv4 address found for interface '{val}'")
